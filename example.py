@@ -1,43 +1,3 @@
-# Attention!
-
-Since version 1.24.0 streamlit provides official elements to [build conversational apps](https://docs.streamlit.io/knowledge-base/tutorials/build-conversational-apps).
-
-The new elements are more flexible, extensible and better supported, I would suggest to use them. 
-
-However, streamlit>=1.23 requires protobuf>=4 when some package requires protobuf<=3. In this condition you can use this package(<1.0.0) with streamlit<=1.22 as alternative. They are all simple to render text messages.
-
-This package(>=1.0.0) will focus on wrapper of official chat elements to make chat with LLMs more convenient.
-
-# Chatbox component for streamlit
-
-A Streamlit component to show chat messages.
-It's basiclly a wrapper of streamlit officeial elements including the chat elemnts.
-
-- demo
-![](demo.gif)
-
-- demo agent
-![](demo_agent.gif)
-
-## Features
-
-- support streaming output.
-- support markdown/image/video/audio messages, and all streamlit elements could be supported by customized `OutputElement`.
-- output multiple messages at once, and make them collapsable.
-- export & import chat histories
-
-This make it easy to chat with langchain LLMs in streamlit.
-
-Goto [webui](https://github.com/chatchat-space/Langchain-Chatchat/blob/master/webui_pages/dialogue/dialogue.py) of [langchain-chatchat](https://github.com/chatchat-space/Langchain-Chatchat) to see the actual application.
-
-
-## Install
-
-just `pip install -U streamlit-chatbox`
-
-## Usage examples
-
-```python
 import streamlit as st
 from streamlit_chatbox import *
 import time
@@ -71,6 +31,22 @@ with st.sidebar:
 chat_box.init_session()
 chat_box.output_messages()
 
+def on_feedback(
+    feedback,
+    chat_history_id: str = "",
+    history_index: int = -1,
+):
+    reason = feedback["text"]
+    score_int = chat_box.set_feedback(feedback=feedback, history_index=history_index) # convert emoji to integer
+    # do something
+    st.session_state["need_rerun"] = True
+
+
+feedback_kwargs = {
+    "feedback_type": "thumbs",
+    "optional_text_label": "欢迎反馈您打分的理由",
+}
+
 if query := st.chat_input('input your question here'):
     chat_box.user_say(query)
     if streaming:
@@ -91,6 +67,11 @@ if query := st.chat_input('input your question here'):
         # update the element without focus
         chat_box.update_msg(text, element_index=0, streaming=False, state="complete")
         chat_box.update_msg("\n\n".join(docs), element_index=1, streaming=False, state="complete")
+        chat_history_id = "some id"
+        chat_box.show_feedback(**feedback_kwargs,
+                                key=chat_history_id,
+                                on_submit=on_feedback,
+                                kwargs={"chat_history_id": chat_history_id, "history_index": len(chat_box.history) - 1})
     else:
         text, docs = llm.chat(query)
         chat_box.ai_say(
@@ -157,35 +138,3 @@ if btns.button("clear history"):
 
 if show_history:
     st.write(chat_box.history)
-```
-
-## Todos
-
-- [x] wrapper of official chat elements
-- [ ] input messages: (this depends on the official st.chat_input improvement by #7069)
-	- [x] TEXT
-	- [ ] IMAGE
-		- [ ] file upload
-		- [ ] paste from clipboard(streamlit_bokeh_events)
-	- [ ] VIDEO
-		- [ ] file upload
-	- [ ] AUDIO
-		- [ ] file upload
-		- [ ] audio-recorder-streamlit
-
-- [x] output message types:
-	- [x] Text/Markdown/Image/Audio/Video
-	- [x] any other output types supported by streamlit
-
-- [ ] improve output performance
-	- [x] streaming output message
-	- [x] show message in expander
-	- [ ] style the output message
-    - [x] feedback by user
-
-- [x] export & import chat history
-	- [x] export to markdown
-	- [x] export to json
-    - [x] import json
-
-- [x] support output of langchain' Agent.
